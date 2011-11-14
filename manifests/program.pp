@@ -1,4 +1,4 @@
-define supervisor::service(
+define supervisor::program(
   $enable=true, $ensure=present,
   $command, $numprocs=1, $priority=999,
   $autorestart='unexpected',
@@ -9,8 +9,21 @@ define supervisor::service(
   $stdout_logfile_maxsize='250MB', $stdout_logfile_keep=10,
   $stderr_logfile='',
   $stderr_logfile_maxsize='250MB', $stderr_logfile_keep=10,
-  $environment='', $chdir='', $umask='') {
+  $environment='', $chdir='', $umask='',
+  $conf_dir=undef) {
+
   include supervisor::params
+
+    if (!$conf_dir) {
+      $conf_dir = $supervisor::params::conf_dir
+    }
+
+    if ! defined(File[$conf_dir]) {
+      file { $conf_dir:
+        ensure => directory,
+        purge => true,
+      }
+    }
 
     $autostart = $ensure ? {
       running => true,
@@ -19,14 +32,14 @@ define supervisor::service(
     }
 
     file {
-      "${supervisor::params::conf_dir}/${name}.ini":
+      "${conf_dir}/${name}.conf":
         ensure => $enable ? {
           false => absent,
           default => undef },
         content => $enable ? {
-          true => template('supervisor/service.ini.erb'),
+          true => template('supervisor/program.conf.erb'),
           default => undef },
-        require => File[$supervisor::params::conf_dir, "/var/log/supervisor/${name}"],
+        require => File[$conf_dir, "/var/log/supervisor/${name}"],
         notify => Exec['supervisor::update'];
       "/var/log/supervisor/${name}":
         ensure => $ensure ? {

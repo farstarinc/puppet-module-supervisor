@@ -1,9 +1,10 @@
 [unix_http_server]
 file=/var/run/supervisor.sock   ; (the path to the socket file)
+mode=0700
 
 [supervisord]
 logfile=/var/log/supervisor/supervisord.log ; (main log file;default $CWD/supervisord.log)
-logfile_maxbytes=500MB       ; (max main logfile bytes b4 rotation;default 50MB)
+logfile_maxbytes=50MB       ; (max main logfile bytes b4 rotation;default 50MB)
 logfile_backups=10          ; (num of main logfile rotation backups;default 10)
 loglevel=info               ; (log level;default info; others: debug,warn,trace)
 pidfile=/var/run/supervisord.pid ; (supervisord pidfile;default supervisord.pid)
@@ -19,4 +20,5 @@ supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
 serverurl=unix:///var/run/supervisor.sock ; use a unix:// URL  for a unix socket
 
 [include]
-files = <%= scope.lookupvar('supervisor::params::conf_dir') -%>/*.ini
+files = <%= scope.lookupvar('supervisor::params::conf_dir') -%>/*.conf
+files = <%= scope.lookupvar('supervisor::params::conf_dir') -%>/*/*.conf
