@@ -1,10 +1,12 @@
 define supervisor::program(
   $enable=true, $ensure=present,
+  $program_name=$name,
   $command, $numprocs=1, $priority=999,
   $autorestart='unexpected',
   $startsecs=1, $retries=3, $exitcodes='0,2',
   $stopsignal='TERM', $stopwait=10, $user='',
   $group='', $redirect_stderr=false,
+  $log_dir=undef,
   $stdout_logfile='',
   $stdout_logfile_maxsize='250MB', $stdout_logfile_keep=10,
   $stderr_logfile='',
@@ -16,6 +18,11 @@ define supervisor::program(
 
     if (!$conf_dir) {
       $conf_dir = $supervisor::params::conf_dir
+    }
+
+    $logdir = $log_dir ? {
+      undef => "/var/log/supervisor/$name",
+      default => $log_dir
     }
 
     if ! defined(File[$conf_dir]) {
@@ -32,16 +39,19 @@ define supervisor::program(
     }
 
     file {
-      "${conf_dir}/${name}.conf":
+      "${conf_dir}/${program_name}.conf":
         ensure => $enable ? {
           false => absent,
           default => undef },
         content => $enable ? {
           true => template('supervisor/program.conf.erb'),
           default => undef },
-        require => File[$conf_dir, "/var/log/supervisor/${name}"],
-        notify => Exec['supervisor::update'];
-      "/var/log/supervisor/${name}":
+        require => File[$conf_dir, $logdir],
+        notify => Exec['supervisor::update']
+    }
+
+    if ! defined(File[$logdir]) {
+      file { $logdir:
         ensure => $ensure ? {
           purged => absent,
           default => directory },
@@ -57,7 +67,8 @@ define supervisor::program(
           default => false },
         force => $ensure ? {
           purged => true,
-          default => false };
+          default => false }
+      }
     }
 
     if ($ensure == 'running' or $ensure == 'stopped') {

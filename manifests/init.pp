@@ -1,4 +1,4 @@
-class supervisor {
+class supervisor ($use_upstart=false) {
   include supervisor::params
 
   if ! defined(Package[$supervisor::params::package]) { 
@@ -26,13 +26,32 @@ class supervisor {
       source => 'puppet:///modules/supervisor/logrotate',
       require => Package[$supervisor::params::package];
   }
+  
+  # if using upstart, service_name is always just "supervisor"
+  $system_service = $use_upstart ? {
+    true => "supervisor",
+    default => $supervisor::params::system_service
+  }
 
-  service {
-    $supervisor::params::system_service:
+  service { $system_service:
       ensure     => running,
       enable     => true,
       hasrestart => true,
-      require    => Package[$supervisor::params::package];
+      require    => Package[$supervisor::params::package],
+      provider   => $use_upstart ? {
+        true => upstart,
+        default => undef
+      },
+  }
+
+  if ($use_upstart) {
+    file { "/etc/init/supervisor.conf":
+      content => template("supervisor/supervisord-upstart.conf.erb"),
+      before => Service[$system_service],
+    }
+    file { "/etc/init.d/supervisor":
+      ensure => absent
+    }
   }
 
   exec {
